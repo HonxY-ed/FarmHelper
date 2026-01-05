@@ -2049,7 +2049,8 @@ public class FarmHelperConfig extends Config {
                     "Honey Jar (Moth & Cricket)",
                     "Dung (Beetle & Fly)",
                     "Plant Matter (Locust & Slug)",
-                    "Tasty Cheese (Rat & Mite)"
+                    "Tasty Cheese (Rat & Mite)",
+                    "Jelly (Praying Mantis & Dragonfly / Firefly)"
             }
     )
     public static int autoSprayonatorSprayMaterial = 0;
