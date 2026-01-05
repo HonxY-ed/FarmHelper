@@ -141,7 +141,6 @@ public class PestFarmer implements IFeature {
             MacroHandler.getInstance().resumeMacro();
         }
         failed = false;
-        petSwapped = false;
         targetPet = null;
         IFeature.super.stop();
     }
@@ -267,6 +266,7 @@ public class PestFarmer implements IFeature {
                 petSwapState = PetSwapState.NONE;
                 PlayerUtils.closeScreen();
                 if (pestSpawned && ((FarmHelperConfig.pestFarmerKillPests && GameStateHandler.getInstance().getPestsCount() >= FarmHelperConfig.pestFarmerStartKillAt) || FarmHelperConfig.pestFarmingSetSpawn)) {
+                    mainState = MainState.SWAP_N_START;
                     setState(State.SETTING_SPAWN, 0);
                 } else {
                     stop();
@@ -469,36 +469,28 @@ public class PestFarmer implements IFeature {
                     List<ItemStack> inventory = mc.thePlayer.openContainer.getInventory();
                     for (ItemStack itemStack : inventory) {
                         if (itemStack == null) continue;
-                        List<String> lore = InventoryUtils.getItemLore(itemStack);
-                        boolean isCurrentlySummoned = lore.stream().anyMatch(s -> s.toLowerCase().contains("click to despawn"));
                         String petName = StringUtils.stripControlCodes(itemStack.getDisplayName());
                         if (petName.contains("]")) {
                             petName = petName.substring(petName.indexOf("]") + 2);
                         }
-
-                        // If this item is the currently summoned pet and it's the target pet, skip swapping
-                        if (isCurrentlySummoned) {
-                            if (petName.toLowerCase().trim().contains(targetPet.toLowerCase())) {
-                                LogUtils.sendDebug("[PestFarmer] Desired pet already summoned: " + petName);
-                                petSwapped = true;
-                                targetPet = null;
-                                petSwapState = PetSwapState.NONE;
-                                PlayerUtils.closeScreen();
-                                // continue with the normal flow
-                                if (pestSpawned && ((FarmHelperConfig.pestFarmerKillPests && GameStateHandler.getInstance().getPestsCount() >= FarmHelperConfig.pestFarmerStartKillAt) || FarmHelperConfig.pestFarmingSetSpawn)) {
-                                    setState(State.SETTING_SPAWN, 0);
-                                } else {
-                                    stop();
-                                }
-                                return;
-                            }
-                            // if a different pet is currently summoned, continue searching for the target pet
-                        }
-
                         if (petName.toLowerCase().trim().contains(targetPet.toLowerCase())) {
                             LogUtils.sendDebug("[PestFarmer] Found pet: " + petName);
-                            InventoryUtils.clickContainerSlot(InventoryUtils.getSlotIdOfItemInContainer(petName), InventoryUtils.ClickType.LEFT, InventoryUtils.ClickMode.PICKUP);
-                            petSwapState = PetSwapState.WAITING_FOR_SPAWN;
+                            List<String> petLore = InventoryUtils.getItemLore(itemStack);
+                            if (petLore != null && petLore.stream().anyMatch(s -> s.toLowerCase().contains("click to despawn"))) {
+                                    petSwapped = true; // prevent further attempts
+                                    targetPet = null;
+                                    petSwapState = PetSwapState.NONE;
+                                    PlayerUtils.closeScreen();
+                                    if (pestSpawned && ((FarmHelperConfig.pestFarmerKillPests && GameStateHandler.getInstance().getPestsCount() >= FarmHelperConfig.pestFarmerStartKillAt) || FarmHelperConfig.pestFarmingSetSpawn)) {
+                                        mainState = MainState.SWAP_N_START;
+                                        setState(State.SETTING_SPAWN, 0);
+                                    } else {
+                                        stop();
+                                    }
+                            } else {
+                                InventoryUtils.clickContainerSlot(InventoryUtils.getSlotIdOfItemInContainer(petName), InventoryUtils.ClickType.LEFT, InventoryUtils.ClickMode.PICKUP);
+                                petSwapState = PetSwapState.WAITING_FOR_SPAWN;
+                            }
                             timer.schedule(5000);
                             return;
                         }
@@ -518,7 +510,6 @@ public class PestFarmer implements IFeature {
                     targetPet = null;
                     petSwapState = PetSwapState.NONE;
                     PlayerUtils.closeScreen();
-                    // continue with the normal flow
                     if (pestSpawned && ((FarmHelperConfig.pestFarmerKillPests && GameStateHandler.getInstance().getPestsCount() >= FarmHelperConfig.pestFarmerStartKillAt) || FarmHelperConfig.pestFarmingSetSpawn)) {
                         setState(State.SETTING_SPAWN, 0);
                     } else {
